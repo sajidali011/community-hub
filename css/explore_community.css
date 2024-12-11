@@ -1,0 +1,114 @@
+/* General Styles */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+/* Menubar Styling */
+.menubar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: calc(100% - 260px); /* Account for sidebar width */
+  height: 60px;
+  padding: 0 20px;
+ 
+  
+}
+
+.menubar .dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.menubar img {
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 50px;
+  right: 0;
+  background-color: #f9f9f9;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  min-width: 120px;
+  border-radius: 5px;
+  z-index: 20;
+}
+
+.dropdown-content a {
+  color: black;
+  text-decoration: none;
+  display: block;
+  padding: 8px 12px;
+}
+
+.dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  width: 250px;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: #444;
+  padding-top: 20px;
+  color: white;
+}
+
+.sidebar .community-header {
+  text-align: center;
+  padding: 10px;
+}
+
+.sidebar .community-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+
+.sidebar ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.sidebar ul li {
+  padding: 10px;
+  text-align: left;
+}
+
+.sidebar ul li a {
+  color: white;
+  text-decoration: none;
+  display: block;
+}
+
+.sidebar ul li a:hover {
+  background-color: #555;
+}
+
+/* Content Area */
+.content {
+  margin-left: 260px; /* Account for the sidebar width */
+  padding: 80px 20px 20px; /* Top padding adjusted to avoid overlap with menubar */
+}
+
+.content-item {
+  display: none;
+}
+
+.content-item.active {
+  display: block;
+}
