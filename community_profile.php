@@ -51,9 +51,9 @@ $profileImage = $communityProfile['profile_image'] ?? $defaultProfileImage;
             <p><h4><b> <?= htmlspecialchars($name) ?></h4></b></p>
             <p><h6><strong>Bio:</strong> <?= nl2br(htmlspecialchars($bio)) ?></h6></p>
             <div class="mt-4">
-                <a href="Edit_community_profile.php" class="btn btn-primary">Edit Profile</a>
-                <a href="home.php" class="btn btn-secondary">Back to Home</a>
-            </div>
+    <a href="Edit_community_profile.php" class="btn btn-primary">Edit Profile</a>
+    
+</div>
         </div>
     </div>
 

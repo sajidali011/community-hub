@@ -44,7 +44,7 @@ if (!$community_id || !$post_id) {
 }
 
 // Fetch the post details from the database
-$sql_post = "SELECT p.id, p.content, p.image, p.created_at, r.username AS author, c.name AS community_name
+$sql_post = "SELECT p.id, p.content, p.image, p.created_at, r.username AS author, c.name AS community_name, p.status
              FROM posts p
              JOIN register r ON p.user_id = r.id
              JOIN communities c ON p.community_id = c.id
@@ -58,6 +58,24 @@ $stmt_post->close();
 
 if (!$post) {
     echo "<script>alert('Post not found.'); window.location.href='index.php';</script>";
+    exit;
+}
+
+// Handle Draft Button Click (Move post to Draft)
+if (isset($_POST['move_to_draft'])) {
+    $sql_update_status = "UPDATE posts SET status = 'draft' WHERE id = ? AND user_id = ?";
+    $stmt_update_status = $conn->prepare($sql_update_status);
+    $stmt_update_status->bind_param("ii", $post_id, $user_id);
+    $stmt_update_status->execute();
+    $stmt_update_status->close();
+
+    echo "<script>alert('Post moved to Draft.'); window.location.href='explore_community.php?community_id=$community_id';</script>";
+    exit;
+}
+
+// Handle Edit Button Click (Redirect to edit_draft.php)
+if (isset($_POST['edit_post'])) {
+    echo "<script>window.location.href='edit_draft.php?post_id=$post_id';</script>";
     exit;
 }
 ?>
@@ -114,17 +132,31 @@ if (!$post) {
             font-size: 1.1rem;
             line-height: 1.6;
         }
+        .btn-container {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
 <div class="post-container">
+    <div class="post-card">
         <div class="post-content">
             <h1 class="post-title">Community: <?= htmlspecialchars($post['community_name']) ?></h1>
             <p class="post-meta">By <?= htmlspecialchars($post['author']) ?> | Posted on <?= htmlspecialchars($post['created_at']) ?></p> <hr>
             <div class="content-text">
                 <?= $post['content'] ?>
             </div>
+            <div class="btn-container">
+                <?php if ($post['status'] === 'published') { ?>
+                    <!-- Show Draft and Edit buttons if the post is published -->
+                    <form method="POST" style="display:inline;">
+                        <button type="submit" name="move_to_draft" class="btn btn-warning">Move to Draft</button>
+                    </form>
+                <?php } ?>
+               
+            </div>
+        </div>
     </div>
 </div>
 

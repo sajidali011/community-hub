@@ -1,6 +1,5 @@
 <?php
 include("db_connection.php");
-// Start the session to retrieve user info
 session_start();
 
 // Check if the user is logged in
@@ -15,24 +14,51 @@ $user_email = $_SESSION['email'];
 // Query to fetch the user's profile info
 $sql = "SELECT firstname, imgupload FROM register WHERE email = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $user_email); // Bind the email parameter
+$stmt->bind_param("s", $user_email);
 $stmt->execute();
 $result = $stmt->get_result();
 
-// Check if user exists
 if ($result->num_rows > 0) {
     $row = $result->fetch_assoc();
     $firstname = $row['firstname'];
-    $profile_image = $row['imgupload'] ? $row['imgupload'] : 'img/undraw_profile.svg'; // Default image if not set
+    $profile_image = $row['imgupload'] ? $row['imgupload'] : 'img/undraw_profile.svg';
 } else {
     $firstname = "Guest";
-    $profile_image = 'img/undraw_profile.svg'; // Default image if user not found
+    $profile_image = 'img/undraw_profile.svg';
+}
+$stmt->close();
+
+// Fetch the latest posts across all communities
+$sql_recent_posts = "SELECT p.id AS post_id, p.content, p.image, p.created_at, r.firstname AS author, c.id AS community_id, c.name AS community_name
+                     FROM posts p
+                     JOIN register r ON p.user_id = r.id
+                     JOIN communities c ON p.community_id = c.id
+                     WHERE p.status = 'published'
+                     ORDER BY p.created_at DESC
+                     LIMIT 3"; // Fetch the 3 most recent posts
+$result_recent_posts = $conn->query($sql_recent_posts);
+
+$recent_posts = [];
+if ($result_recent_posts->num_rows > 0) {
+    while ($row = $result_recent_posts->fetch_assoc()) {
+        $recent_posts[] = $row;
+    }
 }
 
-// Close the connection
-$stmt->close();
+// Fetch the total number of posts
+$sql_total_posts = "SELECT COUNT(*) AS total_posts FROM posts WHERE status = 'published'";
+$result_total_posts = $conn->query($sql_total_posts);
+$total_posts = 0;
+
+if ($result_total_posts && $row = $result_total_posts->fetch_assoc()) {
+    $total_posts = $row['total_posts'];
+}
+
+// Close the database connection
 $conn->close();
+
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -54,6 +80,116 @@ $conn->close();
 
     <!-- Custom styles for this template-->
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
+    <style>
+         footer {
+            position: relative;
+            background-color: #f1f1f1;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #ccc;
+        }
+
+        /* AI Icon Button */
+        #chatIcon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            background-color: #0078d4; /* Button background color */
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        #chatIcon i {
+            margin-right: 10px; /* Space between icon and text */
+            font-size: 18px;
+        }
+
+        /* Chat iframe */
+        #chatFrame {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 400px;
+            height: 500px;
+            border: none;
+            display: none; /* Initially hidden */
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            z-index: 1000;
+        }
+       
+        .posts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .post-card {
+            background-color: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            height: 400px; /* Fixed height for the cards */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .post-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .post-card img,
+        .post-card video {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .post-card h4 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .post-card p {
+            color: #555;
+            flex-grow: 1;
+        }
+
+        .post-card .timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .post-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .post-card-header img {
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+        }
+    </style>
+  
 
 </head>
 
@@ -345,19 +481,20 @@ $conn->close();
         </div>
 
         <!-- Total Content Created Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="mr-3">
-                            <h5 class="font-weight-bold text-success">Total Posts Created</h5>
-                            <p class="h5 mb-0 text-gray-800">200</p>
-                        </div>
-                        <i class="fas fa-pencil-alt fa-2x text-success"></i>
-                    </div>
+<div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-success shadow h-100 py-2">
+        <div class="card-body">
+            <div class="d-flex align-items-center">
+                <div class="mr-3">
+                    <h5 class="font-weight-bold text-success">Total Posts Created</h5>
+                    <p class="h5 mb-0 text-gray-800"><?= htmlspecialchars($total_posts); ?></p>
                 </div>
+                <i class="fas fa-pencil-alt fa-2x text-success"></i>
             </div>
         </div>
+    </div>
+</div>
+
 
         <!-- User's Contributions Card -->
         <div class="col-xl-3 col-md-6 mb-4">
@@ -374,37 +511,37 @@ $conn->close();
             </div>
         </div>
     </div>
-    <!-- Latest Content Created -->
-    <div class="row mb-4">
-        <div class="col-xl-8 col-lg-7">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">Latest Content Created</h6>
-                    <div class="dropdown">
-                        <a class="dropdown-toggle" href="#" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-ellipsis-v text-gray-400"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in">
-                            <a class="dropdown-item" href="#">Manage Content</a>
-                            <a class="dropdown-item" href="#">View All</a>
-                        </div>
+<!-- recent post -->
+<div class="content">
+    <h3>Recent Posts</h3>
+    <div class="posts-container">
+        <?php if (!empty($recent_posts)): ?>
+            <?php foreach ($recent_posts as $post): ?>
+                <div class="post-card" onclick="window.location.href='show_post.php?community_id=<?= $post['community_id'] ?>&post_id=<?= $post['post_id'] ?>'">
+                    <div class="post-card-header">
+                        <img src="<?= htmlspecialchars($profile_image) ?>" alt="User Profile Image">
+                        <h4><?= htmlspecialchars($post['author']) ?> <br> Post Name is <?= htmlspecialchars($post['community_name']) ?></h4>
                     </div>
+                    <p><?= htmlspecialchars(mb_substr(strip_tags($post['content']), 0, 100)) ?>...</p>
+                    <div class="timestamp"><?= htmlspecialchars($post['created_at']) ?></div>
+                    <?php if (!empty($post['image'])): ?>
+                        <?php if (preg_match('/\.(mp4|webm|ogg)$/i', $post['image'])): ?>
+                            <video controls>
+                                <source src="<?= htmlspecialchars($post['image']) ?>" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        <?php else: ?>
+                            <img src="<?= htmlspecialchars($post['image']) ?>" alt="Post Image">
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <h5 class="mb-1">New Post in 'Gaming Community'</h5>
-                            <p class="mb-1">Check out the latest post about the new game releases!</p>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <h5 class="mb-1">Blog about Tech Innovations</h5>
-                            <p class="mb-1">An insightful blog on the latest trends in technology.</p>
-                        </a>
-                        <!-- Add more content items here -->
-                    </div>
-                </div>
-            </div>
-        </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p>No recent posts available.</p>
+        <?php endif; ?>
+    </div>
+</div>
+
         <!-- User Profile & Community Management -->
         <div class="col-xl-4 col-lg-5">
             <div class="card shadow mb-4">
@@ -416,10 +553,10 @@ $conn->close();
                         <a href="user_profile.php" class="list-group-item list-group-item-action">
                             <i class="fas fa-user-edit mr-2"></i>Edit Global Profile
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="community_list.php" class="list-group-item list-group-item-action">
                             <i class="fas fa-users-cog mr-2"></i>Manage Communities
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="create_community.php" class="list-group-item list-group-item-action">
                             <i class="fas fa-users mr-2"></i>Create New Community
                         </a>
                     </div>
@@ -428,23 +565,9 @@ $conn->close();
         </div>
     </div>
 
-
-
 </div>
-<!-- End of Main Content -->
-
-
-
-            <!-- Footer -->
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; Your Website 2021</span>
-                    </div>
-                </div>
-            </footer>
-            <!-- End of Footer -->
-
+<?php include "botpress_chatbot.php"
+?>
         </div>
         <!-- End of Content Wrapper -->
 

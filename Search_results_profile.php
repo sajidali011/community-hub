@@ -14,8 +14,8 @@ if (!isset($_SESSION['email'])) {
     exit;
 }
 
-// Get the current email from session
-$current_email = $_SESSION['email'];
+// Get the searched username from the query string
+$searched_username = isset($_GET['username']) ? trim($_GET['username']) : '';
 
 // Create a connection
 $conn = new mysqli($servername, $username, $password, $dbname);
@@ -25,10 +25,10 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Query to fetch data from the 'register' table using email
-$sql = "SELECT imgupload, firstname, username, bio FROM register WHERE email = ?";
+// Query to fetch data from the 'register' table using username
+$sql = "SELECT imgupload, firstname, username, bio FROM register WHERE username = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $current_email); // Bind the email parameter
+$stmt->bind_param("s", $searched_username); // Bind the username parameter
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -40,7 +40,7 @@ if ($result->num_rows > 0) {
     $username = $row['username'];
     $bio = $row['bio'] ? $row['bio'] : 'No Bio'; // Default if no bio
 } else {
-    echo "<script>alert('No data found for this user!'); window.location.href='login.php';</script>";
+    echo "<script>alert('No profile found for this username!'); window.location.href='search.php';</script>";
     exit;
 }
 
@@ -75,7 +75,6 @@ $conn->close();
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             width: 360px;
-            padding: 20px;
             text-align: center;
             transition: transform 0.3s ease;
         }
@@ -88,7 +87,21 @@ $conn->close();
             font-size: 28px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 20px;
+            margin-top: 20px;
+            transition: color 0.5s ease;
+        }
+
+        .cover-pic {
+            display: block;
+            width: 100%;
+            max-height: 180px;
+            object-fit: cover;
+            border-radius: 15px 15px 0 0;
+            background-position: center;
+        }
+
+        .profile-image {
+            margin-top: -60px;
         }
 
         .profile-image img {
@@ -96,11 +109,11 @@ $conn->close();
             height: 120px;
             border-radius: 50%;
             object-fit: cover;
-            border: 4px solid #2575fc;
-            margin-bottom: 20px;
+            border: 4px solid white;
         }
 
         .profile-info {
+            margin-top: 10px;
             margin-bottom: 20px;
         }
 
@@ -108,42 +121,26 @@ $conn->close();
             font-size: 18px;
             color: #333;
             margin: 5px 0;
+            transition: color 0.5s ease;
         }
 
         .profile-info p strong {
             color: #4e73df;
+            transition: color 0.5s ease;
         }
 
         .bio-info {
-            
-            margin-bottom: 20px;
-            background-color:#e7e8dc;
-            padding:7px;
-            border-radius:15px;
-        }
-
-        .bio-info p {
+            margin: 0 15px 20px;
+            background-color: #e7e8dc;
+            padding: 10px;
+            border-radius: 15px;
             font-size: 14px;
-            color: black;
-            margin: 5px 0;
-        }
-        .cover-pic{
-            display: block;
-            width: 100%;
-            max-height:180px;
-            object-fit:cover;
-            background-position:center;
-            border-radius:15px;
-        }
-        .image-pic{
-           
-            width: 140px;
-            border-radius: 50%;
-            margin-top: -70px;
+            color: #333;
+            transition: color 0.5s ease;
         }
 
-         /* Light theme styles */
-         .light {
+        /* Light theme styles */
+        .light {
             background-color: white;
             color: black;
         }
@@ -154,72 +151,71 @@ $conn->close();
             color: white !important;
         }
 
-      
-.profile-container.dark {
-    background: #333; /* Dark background */
-    color: white; /* Text color in dark mode */
-}
+        .profile-container.dark {
+            background: #333;
+            color: white;
+        }
 
-/* Additional styles for specific elements */
-.profile-container.dark h1,.profile-container.dark strong,
-.profile-container.dark p {
-    color: white; /* Ensures all text within dark theme is white */
-}
+        .profile-container.dark .bio-info {
+            background-color: #555;
+        }
 
-.profile-container h1,
-.profile-container p {
-    color: black; /* Ensures all text within light theme is black */
-}
-.profile-container.dark .bio-info {
-    background-color: #555; /* Dark background for bio-info in dark mode */
-}   
-.profile-container.dark .profile-info strong{
-    color:yellow;
-}     
+        .profile-container.dark p strong {
+            color: yellow;
+        }
     </style>
 </head>
 
-<body >
+<body>
+    <div class="profile-container toggle-button light" id="themeToggle">
+        <!-- Cover Image -->
+        <img src="<?php echo htmlspecialchars($imgupload); ?>" alt="Cover Image" class="cover-pic">
 
-    <div class="profile-container "class="toggle-button light" id="themeToggle">
-        
-
-
-        <h1>Welcome, <?php echo htmlspecialchars($firstname); ?>!</h1>
-
-       
-        <img src="<?php echo htmlspecialchars($imgupload); ?>" alt="Profile Image" class="cover-pic" >
+        <!-- Profile Image -->
         <div class="profile-image">
-           
-            <img src="<?php echo htmlspecialchars($imgupload); ?>" alt="Profile Image" class="image-pic" >
-        </div>
-        <div class="profile-info">
-        <p><strong> <?php echo htmlspecialchars($firstname); ?></strong></p>
-            <p><b>Username:</b> <strong> @<?php echo htmlspecialchars($username); ?></strong></p>
-           
+            <img src="<?php echo htmlspecialchars($imgupload); ?>" alt="Profile Image">
         </div>
 
-        <div class="bio-info">
+        <!-- User Info -->
+        <h1 id="welcomeText">Welcome, <?php echo htmlspecialchars($firstname); ?>!</h1>
+        <div class="profile-info">
+            <p id="usernameText"><strong><?php echo htmlspecialchars($firstname); ?></strong></p>
+            <p id="userHandle"><b>Username:</b> <strong>@<?php echo htmlspecialchars($username); ?></strong></p>
+        </div>
+
+        <!-- Bio -->
+        <div class="bio-info" id="bioText">
             <p><strong>Bio:</strong> <?php echo htmlspecialchars($bio); ?></p>
         </div>
     </div>
-    <script>
-    const toggleButton = document.getElementById('themeToggle');
-    
 
-    toggleButton.onclick = function() {
-      
-        if (toggleButton.classList.contains('light')) {
-            toggleButton.classList.remove('light');
-            toggleButton.classList.add('dark');
-           
-        } else {
-            toggleButton.classList.remove('dark');
-            toggleButton.classList.add('light');
-            
-        }
-    };
-</script>
+    <script>
+        const toggleButton = document.getElementById('themeToggle');
+        const welcomeText = document.getElementById('welcomeText');
+        const usernameText = document.getElementById('usernameText');
+        const userHandle = document.getElementById('userHandle');
+        const bioText = document.getElementById('bioText');
+
+        toggleButton.onclick = function () {
+            if (toggleButton.classList.contains('light')) {
+                toggleButton.classList.remove('light');
+                toggleButton.classList.add('dark');
+                // Update text colors for dark mode
+                welcomeText.style.color = "white";
+                usernameText.style.color = "white";
+                userHandle.style.color = "white";
+                bioText.style.color = "white";
+            } else {
+                toggleButton.classList.remove('dark');
+                toggleButton.classList.add('light');
+                // Update text colors for light mode
+                welcomeText.style.color = "black";
+                usernameText.style.color = "black";
+                userHandle.style.color = "black";
+                bioText.style.color = "black";
+            }
+        };
+    </script>
 </body>
 
 </html>
